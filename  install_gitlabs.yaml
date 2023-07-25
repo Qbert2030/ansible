@@ -1,0 +1,100 @@
+---
+- name: Install and Configure GitLab
+  hosts: "*"
+  become: yes
+  become_method: sudo
+  vars:
+    ansible_become_pass: "password"  # Replace with your sudo password
+
+  tasks:
+    - name: Install required dependencies
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+        state: present
+
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker APT repository
+      apt_repository:
+        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename }} stable
+        state: present
+
+    - name: Install Docker engine
+      apt:
+        name: docker-ce
+        state: present
+
+    - name: Install Docker Compose
+      pip:
+        name: docker-compose
+        state: present
+
+    - name: Start and enable Docker service
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Create Docker network
+      community.docker.docker_network:
+        name: gitlab_network
+        driver: bridge
+
+    - name: Ensure GitLab directories exist
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      with_items:
+        - /srv/gitlab/config
+        - /srv/gitlab/logs
+        - /srv/gitlab/data
+
+    - name: Deploy GitLab using Docker Compose
+      get_url:
+        url: https://gitlab.com/gitlab-org/omnibus-gitlab/raw/master/docker/docker-compose.yml
+        dest: /srv/gitlab/docker-compose.yml
+
+    - name: Modify GitLab Docker Compose file with custom IP
+      lineinfile:
+        path: /srv/gitlab/docker-compose.yml
+        regexp: '^(\s+- 192.168.5.113)'
+        line: '\1  # Replace with your desired IP address for GitLab'
+
+    - name: Deploy GitLab using Docker Compose
+      docker_compose:
+        project_src: /srv/gitlab
+        state: present
+        build: yes
+        detach: yes
+        timeout: 600
+      vars:
+        docker_host: "unix://var/run/docker.sock"
+        compose_file: docker-compose.yml
+        project_name: gitlab
+        networks:
+          gitlab_network:
+            ipv4_address: 192.168.5.113  # Replace with the desired IP address for GitLab
+
+    - name: Wait for GitLab to be ready
+      uri:
+        url: http://192.168.5.113
+        method: GET
+        return_content: yes
+        status_code: 200
+        timeout: 120
+      register: gitlab_ready
+      until: gitlab_ready.status == 200
+      retries: 30
+      delay: 10
+
+    - name: Print GitLab initial login information
+      debug:
+        msg: "GitLab is now accessible at http://192.168.5.113"
