@@ -1,0 +1,48 @@
+---
+- name: Configure SSH and copy SSH key
+  hosts: "*"
+  become: yes
+  become_method: sudo
+  vars:
+    ansible_become_pass: "password"
+  tasks:
+    - name: Install OpenSSH Server
+      apt:
+        name: openssh-server
+        state: present
+      when: ansible_distribution == 'Ubuntu'
+
+    - name: Enable and start SSH service
+      service:
+        name: sshd
+        state: started
+        enabled: true
+      when: ansible_distribution == 'Ubuntu'
+
+    - name: Copy SSH key to default destination folder on local machine
+      copy:
+        src: /home/keribeu/.ssh/id_rsa.pub
+        dest: /home/keribeu/.ssh/authorized_keys
+        mode: '0644'
+
+    - name: Add SSH key to authorized_keys on remote machine
+      authorized_key:
+        user: your_remote_user
+        key: "{{ lookup('file', '/home/keribeu/.ssh/id_rsa.pub') }}"
+      when: ansible_distribution == 'Ubuntu'
+
+    - name: Disable password-based login
+      lineinfile:
+        dest: /etc/ssh/sshd_config
+        regexp: '^PasswordAuthentication'
+        line: 'PasswordAuthentication no'
+        state: present
+      notify:
+        - restart ssh service
+      when: ansible_distribution == 'Ubuntu'
+
+  handlers:
+    - name: restart ssh service
+      service:
+        name: sshd
+        state: restarted

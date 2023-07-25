@@ -1,0 +1,5 @@
+[ubuntu]
+
+
+[pihole]
+192.168.1.45 ansible_user=pihole

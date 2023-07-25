@@ -1,0 +1,15 @@
+---
+- name: install docker
+  hosts: "*"
+  become: yes
+  become_method: sudo
+  vars:
+    ansible_become_pass: "password"
+  tasks:
+  - name: Download Docker installation script
+    get_url:
+      url: "https://get.docker.com"
+      dest: "/tmp/install-docker.sh"
+
+  - name: Run Docker installation script
+    shell: "sh /tmp/install-docker.sh"

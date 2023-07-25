@@ -1,0 +1,50 @@
+- name: Deploy WordPress and MySQL
+  hosts: "*"
+  become: yes
+  become_method: sudo
+  vars:
+    ansible_become_pass: "password"
+    wordpress_network: "wordpress"
+    wordpress_container_name: "wordpress"
+    mysql_container_name: "mysql"
+    mysql_root_password: "1"
+    mysql_database: "wordpress"
+    mysql_user: "owen"
+    mysql_password: "password"
+
+  tasks:
+    - name: Create Network
+      community.docker.docker_network:
+        name: "wordpress"
+
+    - name: Deploy WordPress
+      community.docker.docker_container:
+        name: wordpress
+        image: wordpress:latest
+        ports:
+          - "80:80"
+        networks:
+          - name: wordpress
+        volumes:
+          - wordpress:/var/www/html
+        env:
+          WORDPRESS_DB_HOST: "mysql"
+          WORDPRESS_DB_USER: "owen"
+          WORDPRESS_DB_PASSWORD: "password"
+          WORDPRESS_DB_NAME: "wordpress"
+        restart_policy: always
+
+    - name: Deploy MySQL
+      community.docker.docker_container:
+        name: mysql
+        image: mysql:latest
+        networks:
+          - name: wordpress
+        volumes:
+          - "db:/var/lib/mysql"
+        env:
+          MYSQL_DATABASE: "wordpress"
+          MYSQL_USER: "owen"
+          MYSQL_PASSWORD: "password"
+          MYSQL_RANDOM_ROOT_PASSWORD: "1"
+        restart_policy: always

@@ -1,0 +1,16 @@
+- name: Restart Portainer
+  hosts: "192.168.5.125"
+  become: yes
+  become_method: sudo
+  vars:
+    ansible_become_pass: "password"
+  tasks:
+    - name: Stop Portainer container
+      docker_container:
+        name: portainer
+        state: stopped
+
+    - name: Start Portainer container
+      docker_container:
+        name: portainer
+        state: started

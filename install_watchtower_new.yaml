@@ -1,0 +1,22 @@
+---
+- name: Deploy Watchtower
+  hosts: "*"
+  become: yes
+  become_method: sudo
+  vars:
+    ansible_become_pass: "password"
+  tasks:
+    - name: Pull Watchtower Docker image
+      community.docker.docker_image:
+        name: containrrr/watchtower
+        state: present
+        source: pull
+
+    - name: Run Watchtower container
+      community.docker.docker_container:
+        name: watchtower
+        image: containrrr/watchtower
+        command: "--schedule '0 4 * * *'"
+        volumes:
+          - "/var/run/docker.sock:/var/run/docker.sock"
+        restart_policy: always
